@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
-_addon.version = '0.1.0-dev.1'
+_addon.version = '0.1.0-dev.2'
 _addon.name = 'Juggler'
 _addon.author = 'psykad'
 _addon.commands = {'juggler','jugs'}
@@ -62,6 +62,7 @@ windower.register_event('logout', 'unload', function()
 end)
 
 windower.register_event('time change', function()
+    -- TODO: Change update frequency of text. Maybe only update when move count or pet changes.
     local pet = get_pet()
     local output_text = ""
     local total_moves = 3
