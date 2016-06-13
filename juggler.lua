@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
-_addon.version = '0.1.0-dev.0'
+_addon.version = '0.1.0-dev.1'
 _addon.name = 'Juggler'
 _addon.author = 'psykad'
 _addon.commands = {'juggler','jugs'}
@@ -42,7 +42,7 @@ defaults.flags.bold = false
 defaults.flags.italic = false
 
 defaults.text = {}
-defaults.text.size = 12
+defaults.text.size = 11
 defaults.text.font = 'Consolas'
 defaults.text.alpha = 255
 defaults.text.red = 255
@@ -50,6 +50,8 @@ defaults.text.green = 255
 defaults.text.blue = 255
 
 local display = texts.new(defaults)
+
+-- TODO: Add checks for BST main job on zoning and job change events.
 
 windower.register_event('load', 'login', function()
     display:visible(true)   
@@ -62,7 +64,10 @@ end)
 windower.register_event('time change', function()
     local pet = get_pet()
     local output_text = ""
-
+    local total_moves = 3
+    local ready_recast = 25 -- TODO: Pull from merits? Or require setup of recast reduction gear? Set with console command?
+    local current_move_count = total_moves - math.ceil(windower.ffxi.get_ability_recasts()[102]/ready_recast)
+    
     -- Check if a pet exists.
     if pet ~= nil then
         local pet_abilities = get_pet_abilities()
@@ -71,6 +76,8 @@ windower.register_event('time change', function()
         if #pet_abilities == 0 then
             output_text = "No ready moves"
         else
+            -- Set ready move count.
+            output_text = "Moves: "..current_move_count.." | "
             -- Iterate through available pet ready moves.
             for i =1,#pet_abilities do
                 -- NOTE: Should this be adjustable, i.e. stacked vs inline display?
@@ -116,7 +123,7 @@ windower.register_event('addon command', function(...)
         end
 
         -- Execute the move.
-        windower.send_command('input /ja "'..pet_moves[move_index]..'" <me>')
+        windower.send_command('input /ja "'..pet_abilities[move_index]..'" <me>')
     end
 end)
 
