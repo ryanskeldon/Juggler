@@ -1,5 +1,5 @@
 # Juggler
-Juggler is an add-on for [FFXI Windower](http://windower.net/). The purpose of Juggler is to simplify the use of Ready commands for jug pets by providing dynamic macro based on the active jug pet's abilities. Other features include: current count of Ready charges and time until the next charge is ready.
+Juggler is an add-on for [FFXI Windower](http://windower.net/). The purpose of Juggler is to simplify the use of Ready commands for jug pets by providing dynamic macros based on the active jug pet's abilities. Other features include: current count of Ready charges and time until the next charge is ready.
 
 ## Usage
 The first thing you should do is setup your Ready recast time. By default, Juggler will use the base 30 second recast. If you have any merits or gear that lowers your recast, run the `jugs set_recast X` command, where X is your final recast time including the recast reduction gear and merits.
