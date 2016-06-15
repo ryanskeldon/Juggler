@@ -14,86 +14,89 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
-_addon.version = '0.1.0-dev.2'
+_addon.version = '0.1.0-dev.3'
 _addon.name = 'Juggler'
 _addon.author = 'psykad'
 _addon.commands = {'juggler','jugs'}
 
+--------------------------------------------------------------------------------
+-- Required libraries
+--------------------------------------------------------------------------------
 require 'tables'
 local texts = require('texts')
 local res = require('resources')
+local config = require('config')
 
+--------------------------------------------------------------------------------
+-- Default add-on settings
+--------------------------------------------------------------------------------
 local defaults = {}
-defaults.pos = {}
-defaults.pos.x = 0
-defaults.pos.y = windower.get_windower_settings().y_res-17
 
-defaults.bg = {}
-defaults.bg.alpha = 255
-defaults.bg.red = 0
-defaults.bg.green = 0
-defaults.bg.blue = 0
-defaults.bg.visible = true
+-- HUD settings.
+defaults.ready_move_hud_settings = {}
+defaults.ready_move_hud_settings.pos = {}
+defaults.ready_move_hud_settings.pos.x = 0
+defaults.ready_move_hud_settings.pos.y = 0
+defaults.ready_move_hud_settings.bg = {}
+defaults.ready_move_hud_settings.bg.alpha = 255
+defaults.ready_move_hud_settings.bg.red = 0
+defaults.ready_move_hud_settings.bg.green = 0
+defaults.ready_move_hud_settings.bg.blue = 0
+defaults.ready_move_hud_settings.bg.visible = true
+defaults.ready_move_hud_settings.flags = {}
+defaults.ready_move_hud_settings.flags.right = false
+defaults.ready_move_hud_settings.flags.bottom = false
+defaults.ready_move_hud_settings.flags.bold = false
+defaults.ready_move_hud_settings.flags.italic = false
+defaults.ready_move_hud_settings.text = {}
+defaults.ready_move_hud_settings.text.size = 12
+defaults.ready_move_hud_settings.text.font = 'Consolas'
+defaults.ready_move_hud_settings.text.alpha = 255
+defaults.ready_move_hud_settings.text.red = 255
+defaults.ready_move_hud_settings.text.green = 255
+defaults.ready_move_hud_settings.text.blue = 255
 
-defaults.flags = {}
-defaults.flags.right = false
-defaults.flags.bottom = false
-defaults.flags.bold = false
-defaults.flags.italic = false
+-- User specific settings.
+defaults.ready_recast_time = 30;
 
-defaults.text = {}
-defaults.text.size = 11
-defaults.text.font = 'Consolas'
-defaults.text.alpha = 255
-defaults.text.red = 255
-defaults.text.green = 255
-defaults.text.blue = 255
+--------------------------------------------------------------------------------
+-- Add-on specfic variables
+--------------------------------------------------------------------------------
+local settings = config.load(defaults)
+local ready_moves_hud = texts.new(settings.ready_move_hud_settings)
 
-local display = texts.new(defaults)
-
--- TODO: Add checks for BST main job on zoning and job change events.
-
+--------------------------------------------------------------------------------
+-- Windower events
+--------------------------------------------------------------------------------
 windower.register_event('load', 'login', function()
-    display:visible(true)   
+    ready_moves_hud:visible(true)   
 end)
 
 windower.register_event('logout', 'unload', function()
-    display:visible(false)
+    ready_moves_hud:visible(false)
 end)
 
-windower.register_event('time change', function()
-    -- TODO: Change update frequency of text. Maybe only update when move count or pet changes.
+windower.register_event('job change', function(job)
+    ready_moves_hud:visible(job == 9)
+end)
+
+windower.register_event('zone change', function()
     local pet = get_pet()
-    local output_text = ""
-    local total_moves = 3
-    local ready_recast = 25 -- TODO: Pull from merits? Or require setup of recast reduction gear? Set with console command?
-    local current_move_count = total_moves - math.ceil(windower.ffxi.get_ability_recasts()[102]/ready_recast)
-    
-    -- Check if a pet exists.
-    if pet ~= nil then
-        local pet_abilities = get_pet_abilities()
 
-        -- Charmed pets have no ready moves.
-        if #pet_abilities == 0 then
-            output_text = "No ready moves"
-        else
-            -- Set ready move count.
-            output_text = "Moves: "..current_move_count.." | "
-            -- Iterate through available pet ready moves.
-            for i =1,#pet_abilities do
-                -- NOTE: Should this be adjustable, i.e. stacked vs inline display?
-                output_text = output_text..'['..i..'] '..pet_abilities[i]
+   ready_moves_hud:visible(pet ~= nil)
+end)
 
-                if i < #pet_abilities then
-                    output_text = output_text..'  '
-                end
-            end
-        end     
-    else 
-        output_text = "No pet found"
-    end
+local frame_count = 0
+windower.register_event('prerender',function()    
+    frame_count = frame_count+1
 
-    display:text(output_text)
+    -- Update display every second.
+    if frame_count%30 == 0 then
+        update_hud()
+
+        -- Reset frame counter.
+        frame_count = 0
+    end    
 end)
 
 windower.register_event('addon command', function(...)
@@ -105,33 +108,119 @@ windower.register_event('addon command', function(...)
         -- Check for pet.
         local pet = get_pet()
         if pet == nil then
-            print(_addon.name..' Error: No pet found.')
+            windower.add_to_chat(8, _addon.name..': You do not have a pet.')
             return
         end
 
         -- Check for the index of the ready move.
         local move_index = tonumber(arg[2])
         if move_index == nil then
-            print(_addon.name..' Error: No ready move index given.')
+            windower.add_to_chat(8, _addon.name..': No ready move number found.')
             return
         end
         
         -- Check if the index is valid for the current list of moves.
         local pet_abilities = get_pet_abilities()
         if move_index < 1 or move_index > #pet_abilities then
-            print(_addon.name..' Error: '..move_index..' is not a valid index.')
+            windower.add_to_chat(8, _addon.name..': No move assigned to #'..move_index..'.')
             return
         end
 
         -- Execute the move.
         windower.send_command('input /ja "'..pet_abilities[move_index]..'" <me>')
+    elseif command == 'set_recast' then
+        local new_recast_time = tonumber(arg[2])
+
+        if new_recast_time == nil or new_recast_time <= 0 then
+            windower.add_to_chat(8, _addon.name..': Recast time missing or invalid.')
+            return
+        end
+        
+	    settings.ready_recast_time = new_recast_time
+
+        config.save(settings)
+
+        windower.add_to_chat(8, _addon.name..': New recast time saved.')
+    elseif command == 'set_xy' then
+        local new_x = tonumber(arg[2])
+        local new_y = tonumber(arg[3])
+
+        if new_x == nil or new_y == nil then
+            windower.add_to_chat(8, _addon.name..': Coordinates missing or invalid.')
+            return
+        end
+
+        settings.ready_move_hud_settings.pos.x = new_x
+        settings.ready_move_hud_settings.pos.y = new_y
+
+        config.save(settings)
+
+        ready_moves_hud:pos(new_x, new_y)
     end
 end)
 
+--------------------------------------------------------------------------------
+--
+--------------------------------------------------------------------------------
+function update_hud()
+    local pet = get_pet()
+    local hud_text = ""
+    
+    -- Check if a pet exists.
+    if pet ~= nil then
+        local pet_abilities = get_pet_abilities()
+    
+        -- Charmed pets have no ready moves.
+        if #pet_abilities == 0 then
+            hud_text = "No ready moves"
+        else
+            -- Calculate current ready move count.
+            local total_moves = 3
+            local ready_ability_recast = windower.ffxi.get_ability_recasts()[102] -- 102 is Sic/Ready ability ID.
+            local current_move_count = total_moves - math.ceil(ready_ability_recast / settings.ready_recast_time)
+
+            local move_count_text = "Moves: "..current_move_count
+            
+            -- Setup message for next move tick.
+            local next_move_ready_text = ""
+            
+            if ready_ability_recast >= 0 and current_move_count < total_moves then
+                local time_til_next_move = ready_ability_recast - (settings.ready_recast_time * (total_moves - current_move_count - 1))
+                next_move_ready_text = "Next: "..time_til_next_move.."s"
+            else
+                next_move_ready_text = "Next: Idle"
+            end
+
+            -- Iterate through available pet ready moves.
+            local available_move_list_text = ""
+            for i =1,#pet_abilities do
+                -- NOTE: Should this be adjustable, i.e. stacked vs inline ready_moves_hud?
+                available_move_list_text = available_move_list_text..'['..i..'] '..pet_abilities[i]
+
+                if i < #pet_abilities then
+                    available_move_list_text = available_move_list_text..'\n'
+                end
+            end
+
+            -- Set ready move count.
+            hud_text = move_count_text..'\n'..next_move_ready_text..'\n'..available_move_list_text
+        end     
+    end
+    
+    ready_moves_hud:text(hud_text)
+    ready_moves_hud:visible(pet ~= nil)
+end
+
+--------------------------------------------------------------------------------
+--
+--------------------------------------------------------------------------------
 function get_pet()
     return windower.ffxi.get_mob_by_target('pet')
 end
 
+--------------------------------------------------------------------------------
+--
+--------------------------------------------------------------------------------
 function get_pet_abilities()
     local abilities = windower.ffxi.get_abilities().job_abilities
     local pet_abilities = {}
@@ -140,7 +229,7 @@ function get_pet_abilities()
     -- Iterate through all current player abilities.
     for i=1,#abilities do
         local ability = res.job_abilities[tonumber(abilities[i])]
-
+        
         -- Filter out everything but Monster abilities.
         if ability.type == 'Monster' then  
             move_index = move_index+1
