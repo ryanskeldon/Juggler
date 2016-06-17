@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
-_addon.version = '0.1.0-dev.3'
+_addon.version = '0.1.0-dev.4'
 _addon.name = 'Juggler'
 _addon.author = 'psykad'
 _addon.commands = {'juggler','jugs'}
@@ -64,6 +64,9 @@ defaults.ready_recast_time = 30;
 --------------------------------------------------------------------------------
 local settings = config.load(defaults)
 local ready_moves_hud = texts.new(settings.ready_move_hud_settings)
+local colors = {}
+colors.white = '255,255,255'
+colors.gray = '96,96,96'
 
 --------------------------------------------------------------------------------
 -- Windower events
@@ -127,7 +130,7 @@ windower.register_event('addon command', function(...)
         end
 
         -- Execute the move.
-        windower.send_command('input /ja "'..pet_abilities[move_index]..'" <me>')
+        windower.send_command('input /ja "'..pet_abilities[move_index].en..'" <me>')
     elseif command == 'set_recast' then
         local new_recast_time = tonumber(arg[2])
 
@@ -194,8 +197,9 @@ function update_hud()
             -- Iterate through available pet ready moves.
             local available_move_list_text = ""
             for i =1,#pet_abilities do
-                -- NOTE: Should this be adjustable, i.e. stacked vs inline ready_moves_hud?
-                available_move_list_text = available_move_list_text..'['..i..'] '..pet_abilities[i]
+                local ability_status_color = current_move_count < pet_abilities[i].mp_cost and colors.gray or colors.white
+
+                available_move_list_text = available_move_list_text..'\\cs('..ability_status_color..')'..'['..i..'] '..pet_abilities[i].en
 
                 if i < #pet_abilities then
                     available_move_list_text = available_move_list_text..'\n'
@@ -234,7 +238,7 @@ function get_pet_abilities()
         if ability.type == 'Monster' then  
             move_index = move_index+1
 
-            pet_abilities[move_index] = ability.en        
+            pet_abilities[move_index] = ability        
         end
     end
 
