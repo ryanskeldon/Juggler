@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
-_addon.version = '0.1.0-dev.4'
+_addon.version = '0.1.0-dev.5'
 _addon.name = 'Juggler'
 _addon.author = 'psykad'
 _addon.commands = {'juggler','jugs'}
@@ -168,9 +168,12 @@ end)
 function update_hud()
     local pet = get_pet()
     local hud_text = ""
+
+    local player = windower.ffxi.get_player()
+    local job = player.main_job_id
     
     -- Check if a pet exists.
-    if pet ~= nil then
+    if pet ~= nil and job == 9 then
         local pet_abilities = get_pet_abilities()
     
         -- Charmed pets have no ready moves.
@@ -208,11 +211,11 @@ function update_hud()
 
             -- Set ready move count.
             hud_text = move_count_text..'\n'..next_move_ready_text..'\n'..available_move_list_text
-        end     
+        end
     end
     
     ready_moves_hud:text(hud_text)
-    ready_moves_hud:visible(pet ~= nil)
+    ready_moves_hud:visible(pet ~= nil and job == 9)
 end
 
 --------------------------------------------------------------------------------
