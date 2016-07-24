@@ -14,7 +14,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
-_addon.version = '0.1.0-dev.5'
+_addon.version = '0.1.0'
 _addon.name = 'Juggler'
 _addon.author = 'psykad'
 _addon.commands = {'juggler','jugs'}
